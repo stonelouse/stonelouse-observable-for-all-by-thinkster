@@ -1,4 +1,4 @@
-import { of, Observable, Observer } from 'rxjs'; 
+import { of, Observable, Observer, Subscription } from 'rxjs'; 
 import { map } from 'rxjs/operators';
 
 console.clear();
@@ -96,4 +96,51 @@ o3.subscribe((res: string) => console.log('o3 subscribe (2)', res));
     p3 then (2) Hello from p3
     Observable next 1: Hello Thinkster Nation from Observable 2nd time  // ... "leftovers" from above;
     Observable next 2: Hello Thinkster Nation from Observable 2nd time  // ... "leftovers" from above;
+ */
+
+console.clear();
+/* ==== Promises are not cancelable; Observables are cancelable ==== */
+/*
+    If you unsubscribe a subscription to an Observable
+    ... the observer action will not be called any longer.
+    This is useful to ignore asynchronous server responses 
+    ... when you are no longer interested in them.    
+    To do the same with Promises, 
+    ... you need special libraries (like Bluebird)
+ */
+const o4: Observable<number> = new Observable(
+  (observer: Observer<number>) => {
+    let num: number = 0;
+    const interval = setInterval(_ => {
+      num++;
+      console.log('o4 ctor callback', num);
+      observer.next(num);
+    }, 1000);
+    setTimeout(_ => clearInterval(interval), 10000);
+  }
+)
+const o4Subscription: Subscription = o4.subscribe((n: number) => console.log('o4 subscription', n));
+setTimeout(_ => o4Subscription.unsubscribe(), 6000);
+/*
+    Promise resolve: Hello Thinkster Nation from Promises               // ... "leftovers" from above;
+    Promise resolve 1: Hello Thinkster Nation from Promise              // ... "leftovers" from above;
+    Promise resolve 2: Hello Thinkster Nation from Promise              // ... "leftovers" from above;
+    p3 then (1) Hello from p3                                           // ... "leftovers" from above;
+    p3 then (2) Hello from p3                                           // ... "leftovers" from above;
+    Observable next 1: Hello Thinkster Nation from Observable 2nd time  // ... "leftovers" from above;
+    Observable next 2: Hello Thinkster Nation from Observable 2nd time  // ... "leftovers" from above;
+    o4 ctor callback 1
+    o4 subscription 1
+    o4 ctor callback 2
+    o4 subscription 2
+    o4 ctor callback 3
+    o4 subscription 3
+    o4 ctor callback 4
+    o4 subscription 4
+    o4 ctor callback 5
+    o4 subscription 5
+    o4 ctor callback 6
+    o4 ctor callback 7
+    o4 ctor callback 8
+    o4 ctor callback 9
  */
