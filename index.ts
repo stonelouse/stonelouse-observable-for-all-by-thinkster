@@ -1,5 +1,5 @@
 import { of, Observable, Observer, Subscription } from 'rxjs'; 
-import { map } from 'rxjs/operators';
+import { shareReplay } from 'rxjs/operators';
 
 console.clear();
 /* ==== Observable vs. Promise ==== */
@@ -143,4 +143,93 @@ setTimeout(_ => o4Subscription.unsubscribe(), 6000);
     o4 ctor callback 7
     o4 ctor callback 8
     o4 ctor callback 9
+ */
+
+console.clear();
+/* ==== Multicasting with Observables ==== */
+let num5 = 0;
+const o5: Observable<string> = new Observable(
+  (observer: Observer<string>) => {
+    num5++;
+    console.log("Entering o5's ctor callback", num5);
+    observer.next(`event from o5=${num5}`);
+  }
+)
+o5.subscribe((res: string) => console.log("o5's subscription 1", res));
+o5.subscribe((res: string) => console.log("o5's subscription 2", res));
+const o6: Observable<string> = o5.pipe(
+  /*
+      You generally want to use shareReplay 
+      ... when you have side-effects or taxing computations 
+      ... that you do not wish to be executed amongst multiple subscribers. 
+      It may also be valuable in situations where you know 
+      ... you will have late subscribers to a stream 
+      ... that need access to previously emitted values.
+      https://www.learnrxjs.io/operators/multicasting/sharereplay.html
+   */
+  shareReplay()
+);
+o6.subscribe((res: string) => console.log("o6's subscription 1", res));
+o6.subscribe((res: string) => console.log("o6's subscription 2", res));
+o6.subscribe((res: string) => console.log("o6's subscription 3", res));
+
+o5.subscribe((res: string) => console.log("o5's subscription 3", res));
+/*
+    Entering o5's ctor callback 1
+    o5's subscription 1 event from o5=1
+    Entering o5's ctor callback 2
+    o5's subscription 2 event from o5=2
+    Entering o5's ctor callback 3
+    o6's subscription 1 event from o5=3
+    o6's subscription 2 event from o5=3
+    o6's subscription 3 event from o5=3
+    Entering o5's ctor callback 4
+    o5's subscription 3 event from o5=4
+    Promise resolve: Hello Thinkster Nation from Promises               // ... "leftovers" from above;
+    Promise resolve 1: Hello Thinkster Nation from Promise              // ... "leftovers" from above;
+    Promise resolve 2: Hello Thinkster Nation from Promise              // ... "leftovers" from above;
+    p3 then (1) Hello from p3                                           // ... "leftovers" from above;
+    p3 then (2) Hello from p3                                           // ... "leftovers" from above;
+    Observable next 1: Hello Thinkster Nation from Observable 2nd time  // ... "leftovers" from above;
+    Observable next 2: Hello Thinkster Nation from Observable 2nd time  // ... "leftovers" from above;
+    o4 ctor callback 1                                                  // ... "leftovers" from above;
+    ...
+    o4 ctor callback 9                                                  // ... "leftovers" from above;
+ */
+
+console.clear();
+/* ==== Multicasting with Observables ==== */
+const o7: Observable<number> = new Observable(
+  (observer: Observer<number>) => {
+    let num = 0;
+    const interval = setInterval(_ => observer.next(++num), 500);
+    setTimeout(_ => {
+      console.log('clear interval now!');
+      clearInterval(interval);
+    }, 2600);
+  }
+).pipe(
+  shareReplay()
+);
+const o7Sub: Subscription = o7.subscribe((res: number)=> console.log('o7 subscription 1', res));
+setTimeout(_ => {
+  o7Sub.unsubscribe();
+  console.log('o7Sub now unsubscribed');
+}, 1800);
+
+setTimeout(_ => o7.subscribe((res: number)=> console.log('o7 subscription 2', res)), 5000);
+/*
+    "leftovers" are ommited
+
+    o7 subscription 1 1
+    o7 subscription 1 2
+    o7 subscription 1 3
+    o7Sub now unsubscribed
+    ...
+    clear interval now!
+    o7 subscription 2 1
+    o7 subscription 2 2
+    o7 subscription 2 3
+    o7 subscription 2 4
+    o7 subscription 2 5
  */
